@@ -1,0 +1,33 @@
+Private Sub CalculateButton_Click()
+
+Me.Hide
+
+End Sub
+Private Sub UserForm_Activate()
+
+Call Populate_Module_List
+
+End Sub
+Sub Populate_Module_List()
+
+'Based on code taken from ExcelExperts.com
+Dim Search_Path As String
+Search_Path = ThisWorkbook.Path & "\things\"
+Set NewObject = New Scripting.FileSystemObject
+Set NewSource = NewObject.GetFolder(Search_Path)
+On Error Resume Next
+For Each myFile In NewSource.Files
+    Dim ModuleName As String
+    ModuleName = myFile.Name
+    ModuleName = Replace(myFile.Name, ".xls", "")
+    Module_List.AddItem (ModuleName)
+Next
+
+End Sub
+
+Private Sub UserForm_Deactivate()
+
+ThisWorkbook.Close
+
+End Sub
+

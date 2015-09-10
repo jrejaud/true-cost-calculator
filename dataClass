@@ -1,0 +1,391 @@
+'Define Variables:
+
+'Module_Name is name of module that is current being opened
+Public Module_Name As String
+
+'Print Location is top left cell location that program is printing to
+Public Print_Location As String
+
+'Module_Input is cell location where input values are first read from
+Public Module_Input_Location As String
+
+'Module Path is path to current Module_Name File
+Public Module_Path As String
+
+'Module Workbook is workbook where data is pulled from
+Public Module_Worksheet As String
+
+'Input Offset is row offset to read input column names
+Public Input_Offset As Integer
+
+'Input Data Offset is row offset to read input data
+Public Input_Data_Offset As Integer
+
+'Output Offset is row offset to read output column names
+Public Output_Offset As Integer
+
+'Output Data Offset is row offset to read output data
+Public Output_Data_Offset As Integer
+
+'True Cost Name is name of report
+Public True_Cost_Name As String
+
+'Level is how "deep" into the search you are
+Public Level As Integer
+
+Public Correction_Offset As Integer
+
+'Max_Level is how deep the search will go
+Public Max_Level As Integer
+
+'Table Index is location of current module name in this file that it is "digging into"
+Public Table_Index As String
+
+Public Top_Marker As String
+
+Public Current_Marker As String
+
+Public First_Current_Marker As String
+
+Public No_Module_Color As Double
+
+Public Output_Total As Double
+
+'Module_Workbook_Location is an object to store read workbook's location
+Public Module_Workbook_Location As Object
+
+'This_Workbook_Location is an object to store this workbook's location
+Public This_Workbook_Location As Object
+Sub Draw_Text(o_row As Integer, o_column As Integer, Text As String) ' No need to pass object through since it is part of this class!
+
+'Set This_Workbook_Location
+Set This_Workbook_Location = Workbooks(ThisWorkbook.Name).Worksheets(1).Range(Print_Location)
+
+'Draw Text
+This_Workbook_Location.Offset(o_row, o_column).Value = Text
+
+'Level Formatting
+If Text = "Level " & Level Then
+    ' Bolden row
+    This_Workbook_Location.Offset(o_row, o_column).EntireRow.Font.Bold = True
+    ' Set font to Size 13
+    This_Workbook_Location.Offset(o_row, o_column).EntireRow.Font.Size = 13
+End If
+
+
+'Report Name Formatting
+If Text = True_Cost_Name Then
+    ' Bolden row
+    This_Workbook_Location.Offset(o_row, o_column).EntireRow.Font.Bold = True
+    ' Set font to Size 15
+    This_Workbook_Location.Offset(o_row, o_column).EntireRow.Font.Size = 15
+End If
+
+'Module Name Formatting
+If Text = Module_Name Then
+    ' Bolden row
+    This_Workbook_Location.Offset(o_row, o_column).EntireRow.Font.Bold = True
+    ' Set font to Size 12
+    This_Workbook_Location.Offset(o_row, o_column).EntireRow.Font.Size = 12
+    ' Draw line underneath
+    This_Workbook_Location.Offset(o_row, o_column).EntireRow.Borders(xlEdgeBottom).LineStyle = XlLineStyle.xlContinuous
+End If
+    
+'Input and Output Formatting
+If Text = "Input" Or Text = "Output" Then
+    ' Bolden row
+    This_Workbook_Location.Offset(o_row, o_column).EntireRow.Font.Bold = True
+    ' Set to Size 11
+    This_Workbook_Location.Offset(o_row, o_column).EntireRow.Font.Size = 11
+End If
+
+End Sub
+Sub Draw_Level()
+Call Draw_Text(0, 0, "Level " & Level)
+Print_Location = Range(Print_Location).Offset(2, 0).Address
+End Sub
+Sub Draw_True_Cost_Name()
+Call Draw_Text(0, 0, True_Cost_Name)
+Print_Location = Range(Print_Location).Offset(2, 0).Address
+End Sub
+Sub Draw_Title_Text()
+Call Draw_Text(0, 0, Module_Name)
+End Sub
+Sub Draw_Input_Columns_Titles()
+Call Draw_Text(Input_Offset, 0, "Input")
+Call Draw_Text(Input_Offset, 1, "Unit")
+Call Draw_Text(Input_Offset, 2, "Amount")
+Call Draw_Text(Input_Offset, 3, "Multiplier")
+Call Draw_Text(Input_Offset, 4, "Total")
+End Sub
+Sub Draw_Output_Columns_Titles(module_row_index)
+Call Draw_Text(module_row_index + Output_Offset, 0, "Output")
+Call Draw_Text(module_row_index + Output_Offset, 1, "Unit")
+Call Draw_Text(module_row_index + Output_Offset, 2, "Amount")
+Call Draw_Text(module_row_index + Output_Offset, 3, "Multiplier")
+Call Draw_Text(module_row_index + Output_Offset, 4, "Total")
+End Sub
+Sub Rip_Data(this_module_row_index, module_row_index, Data_Offset, Column_Offset_1, Column_Offset_2)
+This_Workbook_Location.Offset(this_module_row_index + Data_Offset, Column_Offset_1).Value = Module_Workbook_Location.Offset(module_row_index, Column_Offset_2).Value
+End Sub
+Sub Retrieve_Module() ' Opens Module and Dumps Relevant Information
+
+'Set Module Path Location
+Module_Path = ThisWorkbook.Path & "\things\" & Module_Name
+
+'Open Module File
+Workbooks.Open (Module_Path) 'Requires full file location
+
+'Must set Module_Workbook_Location after opening file!
+'Module_Name
+Set Module_Workbook_Location = Workbooks(Module_Name & ".xls").Worksheets(Module_Worksheet).Range(Module_Input_Location)
+
+'Draw Module Title
+Call Draw_Title_Text
+
+'Draw Input Columns
+Call Draw_Input_Columns_Titles
+
+'Declare Module Row Index
+Dim module_row_index As Integer
+module_row_index = 0
+
+Dim this_module_row_index As Integer
+this_module_row_index = 0
+
+'INPUTS
+Do While Module_Workbook_Location.Offset(module_row_index, 0).Value <> ""  'While there are still inputs to be read
+    'Flow Names
+    Call Rip_Data(this_module_row_index, module_row_index, Input_Data_Offset, 0, 2) ' Look 2 columns to the right
+    'Units
+    Call Rip_Data(this_module_row_index, module_row_index, Input_Data_Offset, 1, 7) ' Look 2 columns to the right
+    'Amount
+    Call Rip_Data(this_module_row_index, module_row_index, Input_Data_Offset, 2, 8) ' Look 8 columns to the right
+    If Input_Check(Module_Workbook_Location.Offset(module_row_index, 2).Value) = False Then 'If Module does not exist
+        'Give it The Paint of Non-existance!
+        This_Workbook_Location.Offset(this_module_row_index + Input_Data_Offset, 0).EntireRow.Font.Color = No_Module_Color
+    End If
+    this_module_row_index = this_module_row_index + 1
+    module_row_index = module_row_index + 1
+Loop
+
+
+'InStr(Module_Workbook_Location.Offset(module_row_index, 2).Value, "Dummy")
+
+'Draw Output Columns
+Call Draw_Output_Columns_Titles(this_module_row_index)
+
+'OUTPUTS
+Do While Module_Workbook_Location.Offset(module_row_index, 1).Value <> "" 'While there are still outputs
+    'Flow Names
+    Call Rip_Data(this_module_row_index, module_row_index, Output_Data_Offset, 0, 2) ' Look 2 columns to the right
+    'Units
+    Call Rip_Data(this_module_row_index, module_row_index, Output_Data_Offset, 1, 7) ' Look 2 columns to the right
+    'Amount
+    Call Rip_Data(this_module_row_index, module_row_index, Output_Data_Offset, 2, 8) ' Look 8 columns to the right
+    this_module_row_index = this_module_row_index + 1
+    module_row_index = module_row_index + 1
+Loop
+
+'Print bottom border under last printed row
+This_Workbook_Location.Offset(this_module_row_index + Output_Data_Offset - 1, 0).EntireRow.Borders(xlEdgeBottom).LineStyle = XlLineStyle.xlContinuous
+
+'Call Maths
+Call Maths(this_module_row_index + Output_Data_Offset - 1)
+
+'Close Module Workbook
+Workbooks(Module_Name & ".xls").Close 'Requires only the local location!
+
+'Update Print Location
+Print_Location = Range(Print_Location).Offset(this_module_row_index + Output_Data_Offset + 1, 0).Address
+
+End Sub
+Sub Maths(Origin_Row)
+
+Multiplier_Column = 4
+
+'Print Offset Total
+This_Workbook_Location.Offset(Origin_Row, Multiplier_Column) = Output_Total
+
+'Determine Offset Multiplier
+Output_Multiplier = This_Workbook_Location.Offset(Origin_Row, Multiplier_Column) / This_Workbook_Location.Offset(Origin_Row, Multiplier_Column - 2)
+This_Workbook_Location.Offset(Origin_Row, Multiplier_Column - 1) = Output_Multiplier
+
+'Throw Multiplier Upwards and set total for each row
+Index = 1
+Do While This_Workbook_Location.Offset(Origin_Row - Index, Multiplier_Column - 1) <> "Multiplier"
+    This_Workbook_Location.Offset(Origin_Row - Index, Multiplier_Column - 1) = Output_Multiplier
+    This_Workbook_Location.Offset(Origin_Row - Index, Multiplier_Column) = This_Workbook_Location.Offset(Origin_Row - Index, Multiplier_Column - 1) * This_Workbook_Location.Offset(Origin_Row - Index, Multiplier_Column - 2)
+    Index = Index + 1
+Loop
+
+'Do the same for the Input Rows!
+Index = Index + 2
+
+Do While This_Workbook_Location.Offset(Origin_Row - Index, Multiplier_Column - 1) <> "Multiplier"
+    This_Workbook_Location.Offset(Origin_Row - Index, Multiplier_Column - 1) = Output_Multiplier
+    This_Workbook_Location.Offset(Origin_Row - Index, Multiplier_Column) = This_Workbook_Location.Offset(Origin_Row - Index, Multiplier_Column - 1) * This_Workbook_Location.Offset(Origin_Row - Index, Multiplier_Column - 2)
+    Index = Index + 1
+Loop
+
+End Sub
+Sub Recursive_Module_Pick()
+
+'Move down to next current marker (move down by 1)
+Current_Marker = Range(Current_Marker).Offset(1, 0).Address
+
+'Check if there are any inputs left at this location of current marker
+If Range(Current_Marker).Value <> "" Then
+    Module_Name = Range(Current_Marker).Value
+'If not then move down to next Top Marker
+Else
+    Top_Marker = Range(Top_Marker).Offset(1, 0).Address
+    'Check if there are any inputs left at this location of top marker
+    'Bump Top Marker if it lands on a red!
+    Do While Range(Top_Marker).Font.Color = No_Module_Color
+        Top_Marker = Range(Top_Marker).Offset(1, 0).Address
+    Loop
+    If Range(Top_Marker).Value <> "" And Range(Top_Marker).Value <> "Input" Then
+        'Indicate that you have a new top marker
+        Range(Print_Location).Value = Range(Top_Marker).Value
+        Range(Print_Location).EntireRow.Borders(xlEdgeBottom).LineStyle = XlLineStyle.xlContinuous
+        Range(Print_Location).EntireRow.Font.Italic = True
+        Print_Location = Range(Print_Location).Offset(2, 0).Address
+        'If so, then move current marker down over this new top marker
+        Call Find_New_Current_Marker(Top_Marker)
+        'And take module name from this new current marker
+        Do While Range(Top_Marker).Font.Color = No_Module_Color
+            Top_Marker = Range(Top_Marker).Offset(1, 0).Address
+        Loop
+        If Range(Current_Marker).Font.Color = No_Module_Color Then
+            Call Recursive_Module_Pick
+        End If
+        Module_Name = Range(Current_Marker).Value
+        'If not, then move to next level!
+    Else
+        Level = Level + 1
+        If Level > Max_Level Then
+        MsgBox ("Analysis Complete.")
+        End
+        End If
+        'Print that you have entered new level
+        Call Draw_Level
+        'Set Top marker equal to first current marker
+        Top_Marker = First_Current_Marker
+        'Set Current marker underneath this new top marker
+        'CURRENT MARKER
+        Call Find_New_Current_Marker(First_Current_Marker)
+        'Current_Marker = Range(Top_Marker).Address
+        'Set new value of First Current Marker
+        First_Current_Marker = Current_Marker
+        'Set module name equal to this new value of current marker
+        Module_Name = Range(Current_Marker).Value
+    End If
+End If
+
+'Skip the module if it does not exist
+If Range(Current_Marker).Font.Color = No_Module_Color Then
+    Call Recursive_Module_Pick
+End If
+
+If Range(Current_Marker).Value = "Output" Then
+    Call Recursive_Module_Pick
+End If
+
+If Input_Check(Range(Current_Marker).Value) = False Then
+    Call Recursive_Module_Pick
+End If
+    
+'Determine New Total Multiplier
+Output_Total = Range(Current_Marker).Offset(0, 4).Value
+
+End Sub
+Sub Recursive_Draw()
+
+'Determine next module to draw
+Call Recursive_Module_Pick
+
+'Retrieve that module
+Call Retrieve_Module
+
+'Recurse!
+Call Recursive_Draw
+
+End Sub
+
+Function Input_Check(Input_Name As String) As Boolean
+
+Dim Input_Module_Path As String
+Input_Module_Path = ThisWorkbook.Path & "\things\" & Input_Name
+
+If (Dir(Input_Module_Path & ".xls") = "") Then
+    Input_Check = False
+Else
+    Input_Check = True
+End If
+
+End Function
+Sub Module_Check()
+
+Module_Path = ThisWorkbook.Path & "\things\" & Module_Name
+
+If (Dir(Module_Path & ".xls") = "") Then
+    MsgBox ("Lion-O!!!!" & vbNewLine & "I cannot find: " & Module_Name)
+    Call Retrieve_Module
+End If
+
+End Sub
+Sub Find_New_Current_Marker(Search_Marker)
+
+Dim Search_Index As Integer
+Search_Index = 0
+
+Dim Old_Level As String
+Old_Level = "Level " & (Level - 1)
+
+Do While Range("A1").Offset(Search_Index, 0).Value <> Old_Level
+    Search_Index = Search_Index + 1
+Loop
+
+Do While Range("A1").Offset(Search_Index, 0).Value <> Range(Search_Marker).Value
+    Search_Index = Search_Index + 1
+Loop
+
+Current_Marker = Range("A1").Offset(Search_Index + 2, 0).Address
+
+End Sub
+
+Sub Get_User_Input()
+'Get Data from User
+User_Form.Show
+
+'Max_Level = User_Form.Level_Box.Text
+Max_Level = 5
+Output_Total = User_Form.Quantity_Box.Text
+Module_Name = User_Form.Module_List.Text
+
+Module_Path = ThisWorkbook.Path & "\things\" & Module_Name
+
+If (Dir(Module_Path & ".xls") = "") Then
+    MsgBox ("Lion-O!!!!" & vbNewLine & "I cannot find: " & Module_Name)
+    Call Quit_Program
+End If
+
+'If Max_Level < 1 Or Max_Level > 4 Then
+'    MsgBox ("Invalid Max Level! It is too low or too high!")
+'    Call Quit_Program
+'End If
+
+If Output_Total <= 0 Then
+    MsgBox ("Invalid Quantity! It is too low!")
+    Call Quit_Program
+End If
+
+Unload User_Form
+End Sub
+
+Sub Quit_Program()
+ThisWorkbook.Saved = True
+Application.Quit
+End Sub
+
